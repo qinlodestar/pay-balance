@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package pay;
+
+message NoArgs {
+}
+
+message NoReply {
+}
+
+message MsgRes {
+    int32 errorCode = 1;
+}
+
+message MsgArg {
+    int32 operation = 1;
+    int64 userId = 2;
+    string orderId = 3;
+    double money = 4;
+}
