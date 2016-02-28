@@ -38,6 +38,7 @@ type Config struct {
 	ConnNum         int               `goconf:"base:connection.num"`
 	HttpBind        string            `goconf:"http:bind"`
 	BalanceRPCAddrs map[string]string `-`
+	MysqlAddr       string            `goconf:"mysql:addr"`
 }
 
 func NewConfig() *Config {
@@ -48,6 +49,7 @@ func NewConfig() *Config {
 		ConnNum:         200000,
 		HttpBind:        "localhost:17810",
 		BalanceRPCAddrs: make(map[string]string),
+		MysqlAddr:       "",
 	}
 }
 

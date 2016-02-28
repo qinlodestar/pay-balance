@@ -17,7 +17,7 @@ func get(i int) {
 		body []byte
 	)
 	//url := fmt.Sprintf("http://127.0.0.1:8070/sub?ver=1&op=7&seq=1&cb=callback&t=%d", i)
-	url := fmt.Sprintf("http://123.57.72.193:17810/trans2balance?userId=%d&orderId=100&money=99.9", i)
+	url := fmt.Sprintf("http://123.57.72.193:17810/trans2balance?userId=%d&orderId=100&money=99.9", 20)
 	//fmt.Printf("%s\n", url)
 	if res, err = http.Get(url); err != nil {
 		fmt.Printf("%d\n%v\n", i, err)
