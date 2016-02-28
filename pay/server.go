@@ -2,7 +2,9 @@ package main
 
 import (
 	log "code.google.com/p/log4go"
-	//	"fmt"
+	"encoding/json"
+	"fmt"
+	define "github.com/qinlodestar/pay-balance/define"
 	"github.com/syndtr/goleveldb/leveldb"
 	"net/http"
 	"strconv"
@@ -11,6 +13,10 @@ import (
 var (
 	Db *leveldb.DB
 )
+
+type Response struct {
+	ErrorCode int32
+}
 
 func initHttp() {
 	var err error
@@ -26,29 +32,76 @@ func initHttp() {
 
 func trans2balance(w http.ResponseWriter, r *http.Request) {
 	var (
-		key string
-		err error
+		key       string
+		msgKey    string
+		err       error
+		errorCode int32
+		status    []byte
 	)
+
 	params := r.URL.Query()
 	sUserId := params.Get("userId")
 	sOrderId := params.Get("orderId")
 	sMoney := params.Get("money")
 	key = "pay_" + sUserId + "_" + sOrderId
 	log.Debug("userId=%s\torderId=%s\tmoney=%s", sUserId, sOrderId, sMoney)
-	err = Db.Put([]byte(key), []byte("123"), nil)
-	if err != nil {
-		_, err = w.Write([]byte("{\"errorCode\":40000}"))
+
+	//如果已经处理成功过的请求就不再处理，直接返回成功
+	msgKey = "msg_" + key
+	status, err = Db.Get([]byte(msgKey), nil)
+	sStatus := fmt.Sprintf("%s", status)
+	if sStatus == "1" {
+		networkWrite(w, define.SUCCESS)
+		log.Debug("success\tkey=%s", key)
 		return
 	}
-	_, err = w.Write([]byte("{\"errorCode\":0}"))
+
+	err = Db.Put([]byte(key), []byte(sMoney), nil)
 	if err != nil {
-		//删除db数据，
-		Db.Delete([]byte(key), nil)
-		//如果再删除失败，就需要再次删除，直到成功为止
+		networkWrite(w, define.ERROR_LEVELDB)
+		return
 	}
-	//data, err := Db.Get([]byte(key), nil)
-	//fmt.Printf("%s\n", data)
 	iUserId, _ := strconv.ParseInt(sUserId, 10, 64)
 	fMoney, _ := strconv.ParseFloat(sMoney, 64)
-	pushMsg(iUserId, sOrderId, fMoney)
+	errorCode, err = pushMsg(iUserId, sOrderId, fMoney)
+	err = ResponseWrite(w, key, errorCode)
+	if err != nil {
+		log.Error("trans2balance\tkey=%s\terr=%v", key, err)
+		return
+	}
+}
+
+//只处理网络请求
+func networkWrite(w http.ResponseWriter, errorCode int32) {
+	var bRes []byte
+	var res Response
+	res.ErrorCode = errorCode
+	bRes, _ = json.Marshal(&res)
+	w.Write(bRes)
+}
+
+//返回值
+func ResponseWrite(w http.ResponseWriter, key string, errorCode int32) (err error) {
+	var bRes []byte
+	var res Response
+	res.ErrorCode = errorCode
+	bRes, _ = json.Marshal(&res)
+	_, err = w.Write(bRes)
+	if err != nil {
+		log.Debug("ResponseWrite\tkey=%s\terr=%v", key, err)
+	}
+	err = Db.Delete([]byte(key), nil)
+	if err != nil {
+		return
+	}
+	var status []byte = []byte("1")
+	if errorCode != define.SUCCESS {
+		status = []byte("0")
+	}
+	msgKey := "msg_" + key
+	err = Db.Put([]byte(msgKey), status, nil)
+	if err != nil {
+		return
+	}
+	return
 }

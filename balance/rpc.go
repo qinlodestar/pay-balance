@@ -2,10 +2,14 @@ package main
 
 import (
 	log "code.google.com/p/log4go"
+	"fmt"
 	inet "github.com/Terry-Mao/goim/libs/net"
 	rpc "github.com/Terry-Mao/protorpc"
+	define "github.com/qinlodestar/pay-balance/define"
 	proto "github.com/qinlodestar/pay-balance/proto/pay"
 	"net"
+	"strconv"
+	//	"time"
 )
 
 type BalanceRpc struct {
@@ -42,7 +46,18 @@ func rpcListen(network, addr string) {
 	rpc.Accept(l)
 }
 
-func (this *BalanceRpc) Push(arg *proto.MsgArg, reply *proto.NoReply) (err error) {
-	println("1111")
+func (this *BalanceRpc) Push(arg *proto.MsgArg, reply *proto.MsgRes) (err error) {
+	iUserId := arg.UserId
+	sOrderId := arg.OrderId
+	fMoney := arg.Money
+	key := fmt.Sprintf("b_%d_%s", iUserId, sOrderId)
+	sMoney := strconv.FormatFloat(fMoney, 'f', 6, 64)
+	err = Db.Put([]byte(key), []byte(sMoney), nil)
+	if err != nil {
+		reply.ErrorCode = define.ERROR_LEVELDB
+		return
+	}
+	reply.ErrorCode = define.SUCCESS
+	//time.Sleep(1 * time.Millisecond)
 	return
 }

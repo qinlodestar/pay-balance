@@ -47,22 +47,21 @@ func initBalance() (err error) {
 	return
 }
 
-func pushMsg(userId int64, orderId string, money float64) (err error) {
+func pushMsg(userId int64, orderId string, money float64) (errorCode int32, err error) {
 	client, err := getServerByUserId(userId)
 	if err != nil {
 		return
 	}
-	arg := &proto.MsgArg{UserId: userId, OrderId: orderId, Money: money}
-	reply := &proto.NoReply{}
-	if err = client.Call(BalanceServicePush, arg, reply); err != nil {
-		return err
-	}
-	return
+	arg := &proto.MsgArg{Operation: 1, UserId: userId, OrderId: orderId, Money: money}
+	reply := &proto.MsgRes{}
+	err = client.Call(BalanceServicePush, arg, reply)
+	log.Debug("errorCode=%d", reply.ErrorCode)
+	return reply.ErrorCode, err
 }
 
 func getServerByUserId(userId int64) (*rpc.Client, error) {
 	serverId := balanceRing.Hash(fmt.Sprintf("%d", userId))
-	log.Debug(serverId)
+	log.Debug("serverId=" + serverId)
 	err := errors.New("get server wrong")
 	if client, ok := balanceServiceMap[serverId]; !ok || *client == nil {
 		return nil, err
